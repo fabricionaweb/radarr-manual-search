@@ -33,7 +33,8 @@ find_tag_id() {
 
   # Failed to create the tag
   if [[ -z "${tagId}" ]]; then
-    echo -e "${BLUE}Failed to create '${TAG_LABEL}'. ${RESET}"
+    echo -e "${YELLOW}Failed to create '${TAG_LABEL}'. ${RESET}"
+    exit 1
   fi
 }
 
