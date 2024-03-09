@@ -13,10 +13,6 @@ LIMIT=4
 
 # API param
 HEADER="x-api-key: ${API_KEY}"
-# CLI font colors
-BLUE='\033[0;34m'
-YELLOW='\033[0;33m'
-RESET='\033[0m'
 
 # Get and set the $tagId for the $TAG_LABEL
 find_tag_id() {
@@ -28,12 +24,12 @@ find_tag_id() {
     tagId=$(curl -sSH "${HEADER}" -X POST "${API_URL}/tag" \
       -H 'content-type: application/json' -d "{\"label\":\"${TAG_LABEL}\"}" | jq -c '.id')
 
-    echo -e "${YELLOW}Tag '${TAG_LABEL}' created. ${RESET}"
+    echo -e "=> Tag '${TAG_LABEL}' created."
   fi
 
   # Failed to create the tag
   if [[ -z "${tagId}" ]]; then
-    echo -e "${YELLOW}Failed to create '${TAG_LABEL}'. ${RESET}"
+    echo -e "=> Failed to create '${TAG_LABEL}'."
     exit 1
   fi
 }
@@ -45,11 +41,11 @@ find_movies() {
       -c '.[] | select(.monitored == true and .isAvailable == true and (.tags | contains([$tagId | tonumber]) | not)) | {id,title}')
 
   if [[ ${#monitoredMovies[@]} -eq 0 ]]; then
-    echo -e "${BLUE}No movies available to upgrade. ${RESET}"
+    echo -e "=> No movies available to upgrade."
     exit 0
   fi
 
-  echo -e "${BLUE}Found ${#monitoredMovies[@]} movies to upgrade. ${RESET}"
+  echo -e "=> Found ${#monitoredMovies[@]} movies to upgrade."
 }
 
 # Call Radarr manual search (performs a full search)
@@ -58,6 +54,7 @@ ask_search() {
     movieId="$(jq -r '.id' <<<"${movie}")"
     movieTitle="$(jq -r '.title' <<<"${movie}")"
 
+    printf "=> Asking search for: ${movieTitle}"
     # Call search
     curl -sSH "${HEADER}" -X POST "${API_URL}/command" \
       -H 'content-type: application/json' -d "{\"name\":\"MoviesSearch\",\"movieIds\":[${movieId}]}" \
@@ -66,13 +63,10 @@ ask_search() {
     curl -sSH "${HEADER}" -X PUT "${API_URL}/movie/editor" \
       -H 'content-type: application/json' -d "{\"movieIds\":[${movieId}],\"tags\":[${tagId}],\"applyTags\":\"add\"}" \
       -o /dev/null
+    printf " ✓\\n"
 
-    echo ""
-    echo -e "${YELLOW}Asked search for: ${movieTitle} ${RESET}"
-
-    if [[ $((--LIMIT)) -eq 0 ]]; then
-      echo ""
-      echo -e "${BLUE}Reached defined limit. ${RESET}"
+    if [[ $((--LIMIT)) -eq 0 || ${#monitoredMovies[@]} -eq 1 ]]; then
+      echo -e "=> Reached limit. Done."
       exit 0
     fi
 
@@ -82,12 +76,12 @@ ask_search() {
 
 # Wait 30 seconds to Radarr search work
 wait_working() {
-  echo -e "${BLUE}Waiting 30 seconds before call the next movie"
+  echo -e "=> Waiting 30 seconds before call the next movie:"
   for i in {1..30}; do
     sleep 1
     printf "."
   done
-  echo -e "${RESET}"
+  echo -e ""
 }
 
 find_tag_id
